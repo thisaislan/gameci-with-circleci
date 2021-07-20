@@ -1,0 +1,193 @@
+###################################################################################################
+#                                                                                                 #
+#  Configuration file using CircleCi and based on GameCi                                          #
+#    For more information about:                                                                  #
+#      CircleCi: https://circleci.com/                                                            #
+#      GameCi: https://game.ci/                                                                   #
+#                                                                                                 #
+#--File:------------------------------------------------------------------------------------------#
+#                                                                                                 #
+#    File name      : config                     File path : ./circle/                            #
+#    Extension file : .yml                       Language  :  YAML                                #
+#    Created        : 2021-06                                                                     #
+#                                                                                                 #
+#--Dependencies:----------------------------------------------------------------------------------#
+#                                                                                                 #
+#    Name: build.sh                              Path : ./ci/                                     #
+#    Name: handle_unity_license.sh               Path : ./ci/                                     #
+#    Name: BuildCommand.cs                       Path : ./Assets/Script/Editor                    #
+#                                                                                                 #
+#--Environment Variables:-------------------------------------------------------------------------#
+#                                                                                                 #
+#    UNITY_USERNAME        : user name to login in to unity services                              #
+#    UNITY_PASSWORD        : user password to login in to unity services                          #
+#    UNITY_LICENSE_CONTENT : base64 string from .ulf file got on Unity’s manual license           #
+#                            activation process                                                   #
+#                                                                                                 #
+###################################################################################################
+
+#-------------------------------------------------------------------------------------------------#
+#  1. Version Section                                                                             #
+#-------------------------------------------------------------------------------------------------#
+#-------------------------------------------------------------------------------------------------#
+#  The version field is intended to be used in order to issue warnings for deprecation or         #
+#  breaking changes.                                                                              #
+#-------------------------------------------------------------------------------------------------#
+
+version: 2.1
+
+#-------------------------------------------------------------------------------------------------#
+#  2. Parameters Section                                                                          #
+#-------------------------------------------------------------------------------------------------#
+#-------------------------------------------------------------------------------------------------#
+#  All parameters needed to run properly the ci                                                   #
+#                                                                                                 #
+#    APP_NAME              : name of the project it will be applied on binary application         #
+#    UNITY_ACTIVATION_FILE : name of the activation unity file                                    #
+#    IMAGE                 : image name used to get correct image from GameCI Docker images       #
+#                            for more: https://hub.docker.com/r/unityci/editor                    #
+#    UNITY_VERSION         : unity version used to get correct image from GameCI Docker images    #
+#    IMAGE_VERSION         : version of image used to get correct image from GameCI Docker images #
+#                            for more: https://github.com/game-ci/docker/releases                 #
+#    UNITY_DIR             : directory where the binary application will be placed                #
+#-------------------------------------------------------------------------------------------------#
+
+parameters:
+
+  APP_NAME:
+    type: string
+    default: ExampleProjectName
+
+  UNITY_ACTIVATION_FILE:
+    type: string
+    default: ./unity3d.alf
+
+  IMAGE:
+    type: string
+    default: unityci/editor
+
+  UNITY_VERSION:
+    type: string
+    default: 2020.1.11f1
+  
+  IMAGE_VERSION:
+    type: string
+    default: '0.13'
+
+  UNITY_DIR:
+    type: string
+    default: $CI_PROJECT_DIR
+
+#-------------------------------------------------------------------------------------------------#
+#  3. Executors Section                                                                           #
+#-------------------------------------------------------------------------------------------------#
+#-------------------------------------------------------------------------------------------------#
+#  Executors define the environment in which the steps of a job will be run                       #
+#                                                                                                 #
+#    node-executor    : the CircleCI Node.js Docker convenience image                             #
+#    android-executor : the GameCI image to build Android AppBundle                               #
+#-------------------------------------------------------------------------------------------------#
+
+executors:
+
+  node-executor:
+    docker:
+      - image: cimg/node:14.10.1
+
+  android-executor:
+    docker:
+      - image: >-
+          << pipeline.parameters.IMAGE >>:<< pipeline.parameters.UNITY_VERSION >>-android-<<
+          pipeline.parameters.IMAGE_VERSION >>
+    environment:
+      BUILD_NAME: << pipeline.parameters.APP_NAME >>
+      BUILD_APP_BUNDLE: true
+
+#-------------------------------------------------------------------------------------------------#
+#  4. Commands Section                                                                            #
+#-------------------------------------------------------------------------------------------------#
+#-------------------------------------------------------------------------------------------------#
+#  A command definition defines a sequence of steps as a map to be executed in a job              #
+#                                                                                                 #
+#    handle-unity-license : check if UNITY_LICENSE_CONTENT environment variable is signed         #
+#                           if it does convert unity license from 64 based to Unity_lic.ulf file  #
+#                           if does not start getting activation file and storage it              #
+#                           the following environment variables must be signed                    #
+#                           UNITY_USERNAME and UNITY_PASSWORD                                     #
+#                           a 64 based version of a Unity_lic.ulf file                            #
+#    build                : build binary application with the target, name and path signed        #
+#-------------------------------------------------------------------------------------------------#
+
+commands:
+
+  handle-unity-license:
+    steps:
+      - run: 
+          name: Handle Unity License
+          command: chmod +x ./ci/handle_unity_license.sh && ./ci/handle_unity_license.sh
+      - store_artifacts:
+          path: << pipeline.parameters.UNITY_ACTIVATION_FILE >>
+
+  build:
+    steps:
+      - run: 
+          name: Building game binary
+          command: chmod +x ./ci/build.sh && ./ci/build.sh
+
+#-------------------------------------------------------------------------------------------------#
+#  5. Jobs Section                                                                                #
+#-------------------------------------------------------------------------------------------------#
+#-------------------------------------------------------------------------------------------------#
+#  Jobs are collections of steps. All of the steps in the job are executed in a single unit,      #
+#  either within a fresh container or VM                                                          #
+#                                                                                                 #
+#    tests         : run existing tests on the project                                            #
+#    build-android : build and storage AppBundle Android binary project if the license exists.    #
+#                    Requires test job                                                            #
+#-------------------------------------------------------------------------------------------------#
+
+jobs:
+
+  tests:
+    executor: node-executor
+    steps:
+      - checkout
+      - run:
+          name: Perform tests
+          command: echo "Put some tests here, please!"
+
+  build-android:
+    executor: android-executor
+    steps:
+      - checkout
+      - handle-unity-license
+      - build
+      - store_artifacts:
+          path: /Builds/Android/<< pipeline.parameters.APP_NAME >>.aab
+    environment:
+      BUILD_TARGET: Android
+
+#-------------------------------------------------------------------------------------------------#
+#  6. Workflows Section                                                                           #
+#-------------------------------------------------------------------------------------------------#
+#-------------------------------------------------------------------------------------------------#
+#  A workflow is a set of rules for defining a collection of jobs and their run order             #
+#                                                                                                 #
+#    version       : The version field is intended to be used in order to issue warnings for      #
+#                    deprecation or breaking changes                                              #
+#    build-android : run test, build and storage of Android application                           #
+#-------------------------------------------------------------------------------------------------#
+          
+workflows:
+  version: 2
+
+  build-android:
+    jobs:
+      - tests
+      - build-android:
+          requires:
+            - tests
+
+###################################################################################################
+#--End--------------------------------------------------------------------------------------------#
+###################################################################################################
