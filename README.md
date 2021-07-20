@@ -8,11 +8,11 @@ Because I had difficulty finding examples on the internet.
 
 ### Useful links
 
-[GameCI official page](https://game.ci)
-[CircleCI official page](https://circleci.com)
-[Article Medium - Continuous Integration for Unity using CircleCI](https://medium.com/xrpractices/continuous-integration-for-unity-using-circleci-8d555f9fa35d)
-[Gitlab - Migrating from CircleCI](https://docs.gitlab.com/ee/ci/migration/circleci.html)
-[Project - Unity3d Gitlab Ci Example](https://gitlab.com/gableroux/unity3d-gitlab-ci-example)
+- [GameCI official page](https://game.ci)
+- [CircleCI official page](https://circleci.com)
+- [Article Medium - Continuous Integration for Unity using CircleCI](https://medium.com/xrpractices/continuous-integration-for-unity-using-circleci-8d555f9fa35d)
+- [Gitlab - Migrating from CircleCI](https://docs.gitlab.com/ee/ci/migration/circleci.html)
+- [Project - Unity3d Gitlab Ci Example](https://gitlab.com/gableroux/unity3d-gitlab-ci-example)
 
 ## License
 
